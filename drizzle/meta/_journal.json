@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1737446456993,
+      "tag": "0000_same_network",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1737481958330,
+      "tag": "0001_elite_puma",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1737534897427,
+      "tag": "0002_known_vanisher",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1737535692995,
+      "tag": "0003_lonely_gauntlet",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1737535733211,
+      "tag": "0004_lush_silver_centurion",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1737536467062,
+      "tag": "0005_bizarre_the_enforcers",
+      "breakpoints": true
+    }
+  ]
+}

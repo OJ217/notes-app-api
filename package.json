@@ -1,0 +1,30 @@
+{
+	"name": "notes-app-api",
+	"scripts": {
+		"dev": "bun run --hot --port=8080 src/server.ts",
+		"db:generate": "bun run drizzle-kit generate",
+		"db:seed": "bun run src/db/seed.ts",
+		"db:studio": "bun run --env-file=.env.local drizzle-kit studio",
+		"db:push:local": "bun run --env-file=.env.local drizzle-kit push",
+		"db:push:prod": "bun run --env-file=.env.prod drizzle-kit push",
+		"db:migrate:local": "bun run --env-file=.env.local drizzle-kit migrate",
+		"db:migrate:prod": "bun run --env-file=.env.prod drizzle-kit migrate"
+	},
+	"dependencies": {
+		"@hono/zod-validator": "^0.4.2",
+		"@types/nodemailer": "^6.4.17",
+		"bcryptjs": "^2.4.3",
+		"drizzle-orm": "^0.38.4",
+		"drizzle-seed": "^0.3.0",
+		"hono": "^4.6.17",
+		"jsonwebtoken": "^9.0.2",
+		"pg": "^8.13.1",
+		"zod": "^3.24.1"
+	},
+	"devDependencies": {
+		"@types/bcryptjs": "^2.4.6",
+		"@types/bun": "latest",
+		"@types/jsonwebtoken": "^9.0.7",
+		"drizzle-kit": "^0.30.2"
+	}
+}
