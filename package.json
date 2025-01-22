@@ -1,6 +1,7 @@
 {
 	"name": "notes-app-api",
 	"scripts": {
+		"start": "bun run --port=8080 src/server.ts",
 		"dev": "bun run --hot --port=8080 src/server.ts",
 		"db:generate": "bun run drizzle-kit generate",
 		"db:seed": "bun run src/db/seed.ts",
