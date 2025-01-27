@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { User, UserInsert, users } from '@/db/schema';
+import { User, UserInsert, users, UserVerification, UserVerificationInsert, userVerifications } from '@/db/schema';
 
 export const findUserByEmail = async (email: string): Promise<User | undefined> => {
 	return await db.query.users.findFirst({
@@ -9,14 +9,52 @@ export const findUserByEmail = async (email: string): Promise<User | undefined> 
 	});
 };
 
-export const insertUser = async (user: UserInsert): Promise<User | undefined> => {
-	const insertedUsers = await db.insert(users).values(user).returning();
+export const findUserVerificationDetails = async (userId: string) => {
+	return await db.query.userVerifications.findFirst({
+		where: eq(userVerifications.userId, userId),
+	});
+};
 
-	if (!insertedUsers || insertedUsers.length < 1) {
-		throw new Error('Could not insert user');
-	}
+export const insertUserWithVerification = async (user: UserInsert, verificationDetails: Omit<UserVerificationInsert, 'userId'>) => {
+	let userId: string | undefined;
 
-	return insertedUsers[0];
+	await db.transaction(async tx => {
+		const insertedUsers = await tx
+			.insert(users)
+			.values(user)
+			.onConflictDoUpdate({ target: users.email, set: { password: user.password } })
+			.returning();
+
+		userId = insertedUsers[0].id;
+
+		await tx
+			.insert(userVerifications)
+			.values({ ...verificationDetails, userId })
+			.onConflictDoUpdate({ target: userVerifications.userId, set: verificationDetails })
+			.returning();
+	});
+
+	return userId;
+};
+
+export const upsertUserVerification = async (verificationDetails: UserVerificationInsert): Promise<UserVerification | undefined | null> => {
+	const verifications = await db
+		.insert(userVerifications)
+		.values(verificationDetails)
+		.onConflictDoUpdate({
+			target: userVerifications.userId,
+			set: verificationDetails,
+		})
+		.returning();
+
+	return verifications[0];
+};
+
+export const verifyUser = async (userId: string) => {
+	await db.transaction(async tx => {
+		await tx.update(users).set({ emailVerified: true }).where(eq(users.id, userId));
+		await tx.delete(userVerifications).where(eq(userVerifications.userId, userId));
+	});
 };
 
 export const updateUserPassword = async ({ userId, password }: { userId: string; password: string }) => {

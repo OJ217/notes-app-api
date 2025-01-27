@@ -1,10 +1,12 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 
-import { archiveNote, deleteNote, fetchNoteByIdAndAuthor, fetchNotes, insertNote, restoreNote, updateNote } from '@/services/note-service';
+import { archiveNote, deleteNote, findNoteById, findNoteByIdAndAuthor, findNotes, insertNote, restoreNote, updateNote } from '@/services/note-service';
 import { Bindings } from '@/types';
-import { nonEmptyObjectSchema, noteStatusSchema } from '@/utils/validation';
+import { nonEmptyObjectSchema, noteIdParamSchema, noteStatusSchema } from '@/utils';
 import { zValidator } from '@hono/zod-validator';
+import { ApiResponse } from '@/api/response';
+import { InternalError, NotFoundError } from '@/api/error';
 
 const notesRouter = new Hono<{ Bindings: Bindings }>();
 
@@ -26,17 +28,26 @@ notesRouter.get(
 	async c => {
 		const filters = c.req.valid('query');
 
-		const notes = await fetchNotes({
+		const notes = await findNotes({
 			userId: c.env.authenticator.userId,
 			...filters,
 		});
 
-		return c.json({
-			success: true,
-			data: notes,
-		});
+		return ApiResponse.create(c, notes);
 	}
 );
+
+notesRouter.get('/:noteId', zValidator('param', noteIdParamSchema), async c => {
+	const { noteId } = c.req.valid('param');
+
+	const note = await findNoteById(noteId);
+
+	if (!note) {
+		throw new NotFoundError('Note not found');
+	}
+
+	return ApiResponse.create(c, note);
+});
 
 notesRouter.post(
 	'/',
@@ -56,21 +67,17 @@ notesRouter.post(
 			authorId: c.env.authenticator.userId,
 		});
 
-		return c.json({
-			success: true,
-			data: insertedNote,
-		});
+		if (!insertedNote) {
+			throw new InternalError('Cannot create a note at the moment');
+		}
+
+		return ApiResponse.create(c, insertedNote);
 	}
 );
 
 notesRouter.patch(
 	'/:noteId',
-	zValidator(
-		'param',
-		z.object({
-			noteId: z.string().uuid(),
-		})
-	),
+	zValidator('param', noteIdParamSchema),
 	zValidator(
 		'json',
 
@@ -86,154 +93,91 @@ notesRouter.patch(
 	),
 	async c => {
 		const { noteId } = c.req.valid('param');
-		const note = c.req.valid('json');
+		const updateNoteData = c.req.valid('json');
+
+		const note = await findNoteByIdAndAuthor({
+			noteId,
+			authorId: c.env.authenticator.userId,
+		});
+
+		if (!note) {
+			throw new NotFoundError('Note not found');
+		}
 
 		const updatedNote = await updateNote({
-			authorId: c.env.authenticator.userId,
-			note,
 			noteId,
+			note: updateNoteData,
 		});
 
-		return c.json({
-			success: true,
-			data: updatedNote,
-		});
+		if (!updatedNote) {
+			throw new NotFoundError('Cannot update not at the moment');
+		}
+
+		return ApiResponse.create(c, updatedNote);
 	}
 );
 
-notesRouter.post(
-	'/:noteId/archive',
-	zValidator(
-		'param',
-		z.object({
-			noteId: z.string().uuid(),
-		})
-	),
-	async c => {
-		const { noteId } = c.req.valid('param');
+notesRouter.post('/:noteId/archive', zValidator('param', noteIdParamSchema), async c => {
+	const { noteId } = c.req.valid('param');
 
-		const note = await fetchNoteByIdAndAuthor({
-			noteId,
-			authorId: c.env.authenticator.userId,
-		});
+	const note = await findNoteByIdAndAuthor({
+		noteId,
+		authorId: c.env.authenticator.userId,
+	});
 
-		if (!note) {
-			return c.json(
-				{
-					success: false,
-					error: { message: `Note not found or you don't have permissions` },
-				},
-				404
-			);
-		}
-
-		const archiveResult = await archiveNote(noteId);
-
-		if (archiveResult.rowCount === 0) {
-			return c.json(
-				{
-					success: false,
-					error: { message: 'Cannot archive note' },
-				},
-				400
-			);
-		}
-
-		return c.json({
-			success: true,
-			data: { archived: true },
-		});
+	if (!note) {
+		throw new NotFoundError('Note not found');
 	}
-);
 
-notesRouter.post(
-	'/:noteId/restore',
-	zValidator(
-		'param',
-		z.object({
-			noteId: z.string().uuid(),
-		})
-	),
-	async c => {
-		const { noteId } = c.req.valid('param');
+	const archiveResult = await archiveNote(noteId);
 
-		const note = await fetchNoteByIdAndAuthor({
-			noteId,
-			authorId: c.env.authenticator.userId,
-		});
-
-		if (!note) {
-			return c.json(
-				{
-					success: false,
-					error: { message: `Note not found or you don't have permissions` },
-				},
-				404
-			);
-		}
-
-		const restoreResult = await restoreNote(noteId);
-
-		if (restoreResult.rowCount === 0) {
-			return c.json(
-				{
-					success: false,
-					error: { message: 'Cannot restore note' },
-				},
-				400
-			);
-		}
-
-		return c.json({
-			success: true,
-			data: { restored: true },
-		});
+	if (archiveResult.rowCount === 0) {
+		throw new InternalError('Cannot archive note at the moment');
 	}
-);
 
-notesRouter.delete(
-	'/:noteId',
-	zValidator(
-		'param',
-		z.object({
-			noteId: z.string().uuid(),
-		})
-	),
-	async c => {
-		const { noteId } = c.req.valid('param');
+	return ApiResponse.updated(c);
+});
 
-		const note = await fetchNoteByIdAndAuthor({
-			noteId,
-			authorId: c.env.authenticator.userId,
-		});
+notesRouter.post('/:noteId/restore', zValidator('param', noteIdParamSchema), async c => {
+	const { noteId } = c.req.valid('param');
 
-		if (!note) {
-			return c.json(
-				{
-					success: false,
-					error: { message: `Note not found or you don't have permissions` },
-				},
-				404
-			);
-		}
+	const note = await findNoteByIdAndAuthor({
+		noteId,
+		authorId: c.env.authenticator.userId,
+	});
 
-		const deleteResult = await deleteNote(noteId);
-
-		if (deleteResult.rowCount === 0) {
-			return c.json(
-				{
-					success: false,
-					error: { message: 'Cannot delete note' },
-				},
-				500
-			);
-		}
-
-		return c.json({
-			success: true,
-			data: { deleted: true },
-		});
+	if (!note) {
+		throw new NotFoundError('Note not found');
 	}
-);
+
+	const restoreResult = await restoreNote(noteId);
+
+	if (restoreResult.rowCount === 0) {
+		throw new InternalError('Cannot restore note at the moment');
+	}
+
+	return ApiResponse.updated(c);
+});
+
+notesRouter.delete('/:noteId', zValidator('param', noteIdParamSchema), async c => {
+	const { noteId } = c.req.valid('param');
+
+	const note = await findNoteByIdAndAuthor({
+		noteId,
+		authorId: c.env.authenticator.userId,
+	});
+
+	if (!note) {
+		throw new NotFoundError('Note not found');
+	}
+
+	const deleteResult = await deleteNote(noteId);
+
+	if (deleteResult.rowCount === 0) {
+		throw new InternalError('Cannot delete note at the moment');
+	}
+
+	return ApiResponse.deleted(c);
+});
 
 export default notesRouter;

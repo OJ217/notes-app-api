@@ -1,0 +1,1 @@
+ALTER TABLE "user_verifications" ADD CONSTRAINT "user_verifications_userId_unique" UNIQUE("user_id");

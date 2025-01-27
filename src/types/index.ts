@@ -14,3 +14,8 @@ export interface AuthPayload {
 export interface Bindings {
 	authenticator: AuthPayload;
 }
+
+export enum EmailType {
+	USER_VERIFICATION = 'user_verification',
+	RESET_PASSWORD = 'reset_password',
+}

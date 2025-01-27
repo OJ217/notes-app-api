@@ -3,7 +3,7 @@ import { seed } from 'drizzle-seed';
 
 import { db } from '@/db';
 import { notes, statusEnum, users } from '@/db/schema';
-import { hashPassword } from '@/services/auth-service';
+import { hashString } from '@/services/auth-service';
 
 const main = async () => {
 	if (process.env.STAGE !== 'local_development') {
@@ -23,7 +23,7 @@ const main = async () => {
 		});
 
 		if (!admin) {
-			adminData.password = await hashPassword(adminData.password);
+			adminData.password = await hashString(adminData.password);
 			const insertedUsers = await db.insert(users).values(adminData).returning();
 
 			if (!insertedUsers || insertedUsers.length < 1) {

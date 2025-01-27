@@ -9,8 +9,9 @@ export const users = pgTable('users', {
 	createdAt: timestamp().defaultNow().notNull(),
 });
 
-export const userRelations = relations(users, ({ many }) => ({
+export const userRelations = relations(users, ({ many, one }) => ({
 	notes: many(notes),
+	emailVerification: one(userVerifications),
 }));
 
 export const statusEnum = pgEnum('note_status', ['active', 'archived']);
@@ -42,8 +43,33 @@ export const noteRelations = relations(notes, ({ one }) => ({
 	}),
 }));
 
+export const userVerifications = pgTable(
+	'user_verifications',
+	{
+		id: uuid().primaryKey().notNull().defaultRandom(),
+		userId: uuid()
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' })
+			.unique(),
+		otp: varchar({ length: 256 }).notNull(),
+		otpExpiration: timestamp().notNull(),
+		createdAt: timestamp().defaultNow().notNull(),
+		updatedAt: timestamp(),
+	},
+	table => [index('user_id_index').on(table.userId)]
+);
+
+export const userVerificationRelations = relations(userVerifications, ({ one }) => ({
+	user: one(users, {
+		fields: [userVerifications.userId],
+		references: [users.id],
+	}),
+}));
+
 export type User = typeof users.$inferSelect;
 export type UserInsert = typeof users.$inferInsert;
 export type Note = typeof notes.$inferSelect;
 export type NoteInsert = typeof notes.$inferInsert;
 export type NoteStatus = (typeof statusEnum.enumValues)[number];
+export type UserVerification = typeof userVerifications.$inferSelect;
+export type UserVerificationInsert = typeof userVerifications.$inferInsert;

@@ -1,9 +1,11 @@
-import { comparePasswords, hashPassword } from '@/services/auth-service';
+import { compareHash, hashString } from '@/services/auth-service';
 import { findUserByEmail, updateUserPassword } from '@/services/user-service';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { Bindings } from '@/types';
 import { z } from 'zod';
+import { BadRequestError, InternalError, NotFoundError } from '@/api/error';
+import { ApiResponse } from '@/api/response';
 
 const userRouter = new Hono<{ Bindings: Bindings }>();
 
@@ -22,34 +24,18 @@ userRouter.patch(
 		const user = await findUserByEmail(c.env.authenticator.email);
 
 		if (!user) {
-			return c.json(
-				{
-					success: false,
-					error: {
-						message: 'User not found.',
-					},
-				},
-				404
-			);
+			throw new NotFoundError('User not found.');
 		}
 
 		if (user.password) {
-			const passwordMatches = await comparePasswords(oldPassword ?? '', user.password);
+			const passwordMatches = await compareHash(oldPassword ?? '', user.password);
 
 			if (!passwordMatches) {
-				return c.json(
-					{
-						success: false,
-						error: {
-							message: 'Password does not match.',
-						},
-					},
-					400
-				);
+				throw new BadRequestError('Password does not match.');
 			}
 		}
 
-		const hashedPassword = await hashPassword(newPassword);
+		const hashedPassword = await hashString(newPassword);
 
 		const passwordUpdate = await updateUserPassword({
 			userId: c.env.authenticator.userId,
@@ -57,21 +43,10 @@ userRouter.patch(
 		});
 
 		if (passwordUpdate.rowCount === 0) {
-			return c.json(
-				{
-					success: false,
-					error: {
-						message: 'Could not update password',
-					},
-				},
-				500
-			);
+			throw new InternalError('Cannot update password at the moment');
 		}
 
-		return c.json({
-			success: true,
-			data: { updated: true },
-		});
+		return ApiResponse.updated(c);
 	}
 );
 
