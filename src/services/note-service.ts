@@ -1,15 +1,51 @@
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { and, arrayContains, count, desc, eq, ilike, lt, or, sql } from 'drizzle-orm';
 
+import { PaginatedResponse } from '@/api/response';
 import { db } from '@/db';
-import { Note, NoteInsert, notes, NoteStatus } from '@/db/schema';
+import { NoteListItem, Note, NoteInsert, notes, NoteStatus } from '@/db/schema';
 
-export const findNotes = async ({ userId, page, search, status }: { userId: string; page?: number; search?: string; status?: NoteStatus }): Promise<Note[]> => {
-	return await db.query.notes.findMany({
-		limit: 20,
-		offset: page ? (page - 1) * 20 : 0,
-		where: and(eq(notes.authorId, userId), eq(notes.status, status ?? 'active'), search ? or(ilike(notes.title, search), ilike(notes.content, search)) : undefined),
+export const paginateNotes = async ({
+	userId,
+	cursor,
+	status,
+	tag,
+	search,
+}: {
+	userId: string;
+	cursor?: Date;
+	status?: NoteStatus;
+	tag?: string;
+	search?: string;
+}): Promise<PaginatedResponse<NoteListItem>> => {
+	const query = and(
+		eq(notes.authorId, userId),
+		eq(notes.status, status ?? 'active'),
+		tag ? arrayContains(notes.tags, [tag]) : undefined,
+		search ? or(ilike(notes.title, search), ilike(notes.content, search)) : undefined,
+		cursor ? lt(notes.createdAt, cursor) : undefined
+	);
+
+	const docsPerPage = 20;
+	const [{ count: totalCount }] = await db.select({ count: count() }).from(notes).where(query);
+	const hasNextCursor = totalCount > docsPerPage;
+
+	const docs = await db.query.notes.findMany({
+		limit: docsPerPage,
+		where: query,
 		orderBy: desc(notes.createdAt),
+		columns: {
+			updatedAt: false,
+			content: false,
+			authorId: false,
+		},
 	});
+
+	return {
+		docs,
+		meta: {
+			cursor: hasNextCursor ? docs[docs.length - 1].createdAt.toISOString() : null,
+		},
+	};
 };
 
 export const findNoteById = async (id: string) => {

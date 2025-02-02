@@ -6,6 +6,9 @@ import { Bindings } from '@/types';
 import { z } from 'zod';
 import { BadRequestError, InternalError, NotFoundError } from '@/api/error';
 import { ApiResponse } from '@/api/response';
+import { db } from '@/db';
+import { sql } from 'drizzle-orm';
+import { notes } from '@/db/schema';
 
 const userRouter = new Hono<{ Bindings: Bindings }>();
 
@@ -13,10 +16,13 @@ userRouter.patch(
 	'/password',
 	zValidator(
 		'json',
-		z.object({
-			oldPassword: z.string().min(6).max(64).optional(),
-			newPassword: z.string().min(6).max(64),
-		})
+		z
+			.object({
+				oldPassword: z.string().min(6).max(64).optional(),
+				newPassword: z.string().min(6).max(64),
+				confirmPassword: z.string().min(6).max(64),
+			})
+			.refine(({ newPassword, confirmPassword }) => newPassword === confirmPassword, { message: 'Password confirmation does not match' })
 	),
 	async c => {
 		const { oldPassword, newPassword } = c.req.valid('json');
@@ -27,12 +33,14 @@ userRouter.patch(
 			throw new NotFoundError('User not found.');
 		}
 
-		if (user.password) {
-			const passwordMatches = await compareHash(oldPassword ?? '', user.password);
+		if (!user.password) {
+			throw new BadRequestError('Password change not allowed.');
+		}
 
-			if (!passwordMatches) {
-				throw new BadRequestError('Password does not match.');
-			}
+		const passwordMatches = await compareHash(oldPassword ?? '', user.password);
+
+		if (!passwordMatches) {
+			throw new BadRequestError('Old password does not match.');
 		}
 
 		const hashedPassword = await hashString(newPassword);
@@ -49,5 +57,24 @@ userRouter.patch(
 		return ApiResponse.updated(c);
 	}
 );
+
+userRouter.get('/tags', async c => {
+	const topTags = await db.execute(
+		sql`
+		  SELECT
+			tag,
+			COUNT(tag) AS tag_count
+		  FROM (
+			SELECT UNNEST(${notes.tags}) AS tag
+			FROM ${notes}
+			WHERE ${notes.authorId} = ${c.env.authenticator.userId}
+		  ) AS flattened_tags
+		  GROUP BY tag
+		  ORDER BY tag_count DESC
+		`
+	);
+
+	return ApiResponse.create(c, topTags.rows);
+});
 
 export default userRouter;

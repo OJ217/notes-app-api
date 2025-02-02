@@ -14,6 +14,13 @@ export enum HttpStatus {
 	INTERNAL_ERROR = 500,
 }
 
+export type PaginatedResponse<T extends object> = {
+	docs: T[];
+	meta: {
+		cursor: string | null;
+	};
+};
+
 export class ApiResponse {
 	static create<T extends object>(c: Context, data: T, status?: ContentfulStatusCode) {
 		return c.json(
@@ -23,6 +30,13 @@ export class ApiResponse {
 			},
 			status ?? HttpStatus.OK
 		);
+	}
+
+	static paginate<T extends object>(c: Context, pagination: PaginatedResponse<T>) {
+		return c.json({
+			success: true,
+			data: pagination,
+		});
 	}
 
 	static error(c: Context, error: ApiErrorObj, status?: ContentfulStatusCode) {

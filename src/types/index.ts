@@ -6,14 +6,14 @@ export type Token<TPayload> = TPayload & {
 	sub: string;
 };
 
-export interface AuthPayload {
+export type AuthPayload = {
 	userId: string;
 	email: string;
-}
+};
 
-export interface Bindings {
+export type Bindings = {
 	authenticator: AuthPayload;
-}
+};
 
 export enum EmailType {
 	USER_VERIFICATION = 'user_verification',

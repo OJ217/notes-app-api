@@ -69,6 +69,7 @@ export const userVerificationRelations = relations(userVerifications, ({ one }) 
 export type User = typeof users.$inferSelect;
 export type UserInsert = typeof users.$inferInsert;
 export type Note = typeof notes.$inferSelect;
+export type NoteListItem = Omit<Note, 'updatedAt' | 'content' | 'authorId'>;
 export type NoteInsert = typeof notes.$inferInsert;
 export type NoteStatus = (typeof statusEnum.enumValues)[number];
 export type UserVerification = typeof userVerifications.$inferSelect;

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 
-import { archiveNote, deleteNote, findNoteById, findNoteByIdAndAuthor, findNotes, insertNote, restoreNote, updateNote } from '@/services/note-service';
+import { archiveNote, deleteNote, findNoteById, findNoteByIdAndAuthor, paginateNotes, insertNote, restoreNote, updateNote } from '@/services/note-service';
 import { Bindings } from '@/types';
 import { nonEmptyObjectSchema, noteIdParamSchema, noteStatusSchema } from '@/utils';
 import { zValidator } from '@hono/zod-validator';
@@ -16,8 +16,9 @@ notesRouter.get(
 		'query',
 		z
 			.object({
-				page: z.string().pipe(z.coerce.number().int().min(1)).optional().default('1'),
+				cursor: z.coerce.date(),
 				status: noteStatusSchema,
+				tag: z.string().optional(),
 				search: z
 					.string()
 					.min(1)
@@ -28,12 +29,12 @@ notesRouter.get(
 	async c => {
 		const filters = c.req.valid('query');
 
-		const notes = await findNotes({
+		const paginatedNotes = await paginateNotes({
 			userId: c.env.authenticator.userId,
 			...filters,
 		});
 
-		return ApiResponse.create(c, notes);
+		return ApiResponse.paginate(c, paginatedNotes);
 	}
 );
 

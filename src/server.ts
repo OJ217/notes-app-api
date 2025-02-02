@@ -10,7 +10,7 @@ import { authenticator, errorHandler } from '@/api/middleware';
 const app = new Hono();
 
 app.use(logger());
-app.use(cors({ origin: ['http://localhost:5173'] }));
+app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:4173'] }));
 
 app.get('/', c => {
 	return c.text('Hello Hono!');
@@ -23,7 +23,7 @@ privateApi.use(authenticator);
 
 publicApi.route('/auth', authRouter);
 privateApi.route('/notes', notesRouter);
-privateApi.route('/users', userRouter);
+privateApi.route('/user', userRouter);
 
 app.onError(errorHandler);
 
