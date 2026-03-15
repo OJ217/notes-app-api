@@ -77,7 +77,5 @@ export const errorHandler: ErrorHandler = (err, c) => {
 			break;
 	}
 
-	console.log(err);
-
 	return ApiResponse.error(c, errorResponse.body, errorResponse.status);
 };

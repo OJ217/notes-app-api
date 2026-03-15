@@ -10,7 +10,7 @@ import { authenticator, errorHandler } from '@/api/middleware';
 const app = new Hono();
 
 app.use(logger());
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:4173'] }));
+app.use(cors({ origin: ['http://localhost:5173'] }));
 
 app.get('/', c => {
 	return c.text('Hello Hono!');

@@ -30,6 +30,14 @@ export const generateOtp = async (): Promise<{ text: string; hash: string; expir
 	};
 };
 
+export const capitalize = (str: string) => {
+	str = str.trim();
+
+	if (str === '') return '';
+
+	return str[0].toUpperCase() + str.slice(1).toLowerCase();
+};
+
 export const nonEmptyObjectSchema = <T extends z.Schema>(schema: T, errorMessage: string = 'At least one key must be provided'): z.ZodEffects<T> =>
 	schema.refine(
 		val => {

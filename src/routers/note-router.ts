@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { archiveNote, deleteNote, findNoteById, findNoteByIdAndAuthor, paginateNotes, insertNote, restoreNote, updateNote } from '@/services/note-service';
 import { Bindings } from '@/types';
-import { nonEmptyObjectSchema, noteIdParamSchema, noteStatusSchema } from '@/utils';
+import { capitalize, nonEmptyObjectSchema, noteIdParamSchema, noteStatusSchema } from '@/utils';
 import { zValidator } from '@hono/zod-validator';
 import { ApiResponse } from '@/api/response';
 import { InternalError, NotFoundError } from '@/api/error';
@@ -57,7 +57,7 @@ notesRouter.post(
 		z.object({
 			title: z.string().min(1).max(128),
 			content: z.string().min(1).max(10000),
-			tags: z.array(z.string()).max(3).optional(),
+			tags: z.array(z.string().transform(capitalize)).max(3).optional(),
 		})
 	),
 	async c => {
@@ -87,7 +87,7 @@ notesRouter.patch(
 				.object({
 					title: z.string().min(1).max(128),
 					content: z.string().min(1).max(10000),
-					tags: z.array(z.string()).max(3),
+					tags: z.array(z.string().transform(capitalize)).max(3),
 				})
 				.partial()
 		)
